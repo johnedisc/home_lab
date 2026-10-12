@@ -16,15 +16,19 @@ while true; do
 done &
 
 exec dwm```
-result: there is basically a while loop that sets up my status bar for dwm with date/time and it is backgrounded so this should not cause a hang up
+
+there is basically a while loop that sets up my status bar for dwm with date/time and it is backgrounded so this should not cause a hang up
+result: there is no obvious hangup here
+
 2 check the xsession-errors logs in my home directory
 #### xsession-errors not present. check var/log/Xorg.0.log instead. lots of information there.
+
 3 try loading startx and logging it to file instead of stdout while in an open X session
 #### xsession wont load while currently in an existing x session. furthermore .xauthority seems to have permissions issues. here is the stdout
 ```bash
 -rw------- 1 root root 675 Dec 15  2025 .Xauthority
--rw------- 2 krys krys   0 Oct 11 22:39 .Xauthority-c
--rw------- 2 krys krys   0 Oct 11 22:39 .Xauthority-l
+-rw------- 2 user user   0 Oct 11 22:39 .Xauthority-c
+-rw------- 2 user user   0 Oct 11 22:39 .Xauthority-l
 ```
 ```bash
 stat ~/.Xauthority
@@ -39,7 +43,7 @@ Change: 2025-12-15 06:56:05.983989365 -0800
   File: .Xauthority-c
   Size: 0         	Blocks: 0          IO Block: 4096   regular empty file
 Device: 8,3	Inode: 1048582     Links: 2
-Access: (0600/-rw-------)  Uid: ( 1000/    krys)   Gid: ( 1000/    krys)
+Access: (0600/-rw-------)  Uid: ( 1000/    user)   Gid: ( 1000/    user)
 Access: 2026-10-11 22:39:12.834044787 -0700
 Modify: 2026-10-11 22:39:12.834044787 -0700
 Change: 2026-10-11 22:39:12.835359952 -0700
@@ -47,7 +51,7 @@ Change: 2026-10-11 22:39:12.835359952 -0700
   File: .Xauthority-l
   Size: 0         	Blocks: 0          IO Block: 4096   regular empty file
 Device: 8,3	Inode: 1048582     Links: 2
-Access: (0600/-rw-------)  Uid: ( 1000/    krys)   Gid: ( 1000/    krys)
+Access: (0600/-rw-------)  Uid: ( 1000/    user)   Gid: ( 1000/    user)
 Access: 2026-10-11 22:39:12.834044787 -0700
 Modify: 2026-10-11 22:39:12.834044787 -0700
 Change: 2026-10-11 22:39:12.835359952 -0700
@@ -66,3 +70,24 @@ echo "$DISPLAY"
 :0
 ```
 
+### Current Hypothesis
+
+The root-owned .Xauthority file is a genuine configuration error and needs to be corrected.
+
+It may or may not explain the original intermittent startx hang, so the original startup problem still needs to be reproduced from the actual console (tty1) after fixing the authority-file ownership.
+
+### Next Steps
+
+Correct ownership of ~/.Xauthority.
+
+Remove stale authority lock files if no xauth process is using them.
+
+Reboot or exit X cleanly.
+
+Reproduce startx from tty1.
+
+Capture the console startup output if the delay occurs again.
+
+### Success
+
+After changing permissions, clearing uneeded .Xauthority configs, and restarting, startx started immediately!
