@@ -1,12 +1,18 @@
-## Problem:
-On login, running `startx` sometimes appears to hang until I press Ctrl+C several times. After that, DWM starts normally.
+````markdown
+## Problem
 
-## Goal:
-Identify what is blocking startup and fix it without hiding the underlying issue.
+After logging into the console, running `startx` sometimes appeared to hang until I pressed `Ctrl+C` several times. Afterward, DWM would eventually start.
 
-## Diagnose
+## Goal
 
-###1 check the .xinitrc file for any instructions that could hang it up
+Identify what was blocking X startup and fix the underlying problem rather than working around it.
+
+## Diagnosis
+
+### 1. Inspect `.xinitrc`
+
+My `.xinitrc` contains a loop that updates the DWM status bar with the current date and time:
+
 ```bash
 #!/bin/sh
 
@@ -15,79 +21,113 @@ while true; do
     sleep 60
 done &
 
-exec dwm```
+exec dwm
+```
 
-there is basically a while loop that sets up my status bar for dwm with date/time and it is backgrounded so this should not cause a hang up
-result: there is no obvious hangup here
+Because the loop is backgrounded with `&`, it should not block execution from reaching:
 
-2 check the xsession-errors logs in my home directory
-#### xsession-errors not present. check var/log/Xorg.0.log instead. lots of information there.
-
-3 try loading startx and logging it to file instead of stdout while in an open X session
-#### xsession wont load while currently in an existing x session. furthermore .xauthority seems to have permissions issues. here is the stdout
 ```bash
--rw------- 1 root root 675 Dec 15  2025 .Xauthority
+exec dwm
+```
+
+**Result:** No obvious blocking command was found in `.xinitrc`.
+
+### 2. Look for X session logs
+
+There was no `~/.xsession-errors` file in my home directory.
+
+I instead inspected the available Xorg logs, including:
+
+```bash
+/var/log/Xorg.0.log
+```
+
+### 3. Try to capture `startx` output
+
+While already inside an active X/DWM session, I attempted to run `startx` again while redirecting its output to a file.
+
+This failed because an X server was already running on display `:0`, and the new command was being executed from a pseudo-terminal rather than the original console.
+
+That test did not reproduce the original startup problem, but it exposed another issue:
+
+```bash
+-rw------- 1 root root 675 Dec 15 2025 .Xauthority
 -rw------- 2 user user   0 Oct 11 22:39 .Xauthority-c
 -rw------- 2 user user   0 Oct 11 22:39 .Xauthority-l
 ```
+
+Inspecting the main authority file showed:
+
 ```bash
-stat ~/.Xauthority
-  File: .Xauthority
-  Size: 675       	Blocks: 8          IO Block: 4096   regular file
-Device: 8,3	Inode: 1048875     Links: 1
-Access: (0600/-rw-------)  Uid: (    0/    root)   Gid: (    0/    root)
-Access: 2026-10-11 22:33:45.838031098 -0700
-Modify: 2025-12-15 06:56:05.983989365 -0800
-Change: 2025-12-15 06:56:05.983989365 -0800
- Birth: 2025-12-15 06:56:05.983006088 -0800
-  File: .Xauthority-c
-  Size: 0         	Blocks: 0          IO Block: 4096   regular empty file
-Device: 8,3	Inode: 1048582     Links: 2
-Access: (0600/-rw-------)  Uid: ( 1000/    user)   Gid: ( 1000/    user)
-Access: 2026-10-11 22:39:12.834044787 -0700
-Modify: 2026-10-11 22:39:12.834044787 -0700
-Change: 2026-10-11 22:39:12.835359952 -0700
- Birth: 2026-10-11 22:39:12.834044787 -0700
-  File: .Xauthority-l
-  Size: 0         	Blocks: 0          IO Block: 4096   regular empty file
-Device: 8,3	Inode: 1048582     Links: 2
-Access: (0600/-rw-------)  Uid: ( 1000/    user)   Gid: ( 1000/    user)
-Access: 2026-10-11 22:39:12.834044787 -0700
-Modify: 2026-10-11 22:39:12.834044787 -0700
-Change: 2026-10-11 22:39:12.835359952 -0700
- Birth: 2026-10-11 22:39:12.834044787 -0700
+Access: (0600/-rw-------)
+Uid: (0/root)
+Gid: (0/root)
 ```
+
+The file belonged to `root`, even though X was normally being started as my regular user.
+
+Because the file permissions were `0600`, my user could not modify it.
+
+The failed startup attempt reported errors including:
+
+```text
+.Xauthority not writable
+timeout in locking authority file
+```
+
+The `.Xauthority-c` and `.Xauthority-l` files were temporary lock files created during the failed attempt.
+
+Additional session information confirmed that an X session was already active:
+
 ```bash
 who
-username     tty1         date 11:01
+username tty1 date 11:01
 ```
+
 ```bash
 tty
 /dev/pts/4
 ```
+
 ```bash
 echo "$DISPLAY"
 :0
 ```
 
-### Current Hypothesis
+## Hypothesis
 
-The root-owned .Xauthority file is a genuine configuration error and needs to be corrected.
+The root-owned `.Xauthority` file was preventing my normal user account from properly updating X authentication information during startup.
 
-It may or may not explain the original intermittent startx hang, so the original startup problem still needs to be reproduced from the actual console (tty1) after fixing the authority-file ownership.
+This could explain the intermittent delay and the unusual behavior when starting X.
 
-### Next Steps
+## Fix
 
-Correct ownership of ~/.Xauthority.
+I changed ownership of `.Xauthority` back to my normal user:
 
-Remove stale authority lock files if no xauth process is using them.
+```bash
+sudo chown user:user ~/.Xauthority
+```
 
-Reboot or exit X cleanly.
+After verifying that no `xauth` process was using the temporary lock files, I removed the stale locks:
 
-Reproduce startx from tty1.
+```bash
+rm -f ~/.Xauthority-c ~/.Xauthority-l
+```
 
-Capture the console startup output if the delay occurs again.
+I then restarted the machine and launched X normally from `tty1`.
 
-### Success
+## Result
 
-After changing permissions, clearing uneeded .Xauthority configs, and restarting, startx started immediately!
+`startx` launched immediately.
+
+The previous delay and repeated `Ctrl+C` behavior did not occur.
+
+The root-owned `.Xauthority` file appears to have been the cause of the startup problem.
+
+## What I Learned
+
+- `.xinitrc` was not the source of the problem.
+- Running `startx` from inside an existing X session is not a valid reproduction of console startup.
+- File ownership can cause application failures even when the configuration itself is correct.
+- Inspecting permissions and ownership is an important troubleshooting step when programs report that files are not writable.
+````
