@@ -1,4 +1,3 @@
-````markdown
 ## Problem
 
 After logging into the console, running `startx` sometimes appeared to hang until I pressed `Ctrl+C` several times. Afterward, DWM would eventually start.
@@ -130,4 +129,3 @@ The root-owned `.Xauthority` file appears to have been the cause of the startup 
 - Running `startx` from inside an existing X session is not a valid reproduction of console startup.
 - File ownership can cause application failures even when the configuration itself is correct.
 - Inspecting permissions and ownership is an important troubleshooting step when programs report that files are not writable.
-````
