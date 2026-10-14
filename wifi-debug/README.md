@@ -79,13 +79,30 @@ IWD is up and handling wifi connectivity. DHCPCD and NETWORKD however can both h
         Oct 13 23:11:34 machine dhcpcd[384]: wlan0: adding default route via id
     ```
     3. thus dhcpcd is handling the ip/route
+    4. AND the theory that dchpcd and networkd were fighting was wrong
 
 
 
-### 3. Try to capture `startx` output
+### 3. why do i have to manually connect to wifi then if iwd is enabled and running at boot?
+
+    1. does it remember connecting to wifi networks in the past?
+        ```
+        Known Networks
+          BedsideManor                      open                    Jan  1,  4:45 PM     
+          Starbucks WiFi                    open                    Aug  5, 10:13 PM     
+        ```
+    Answer. Yes.
+    2. is autoconnect on?
+        ``` iwctl known-networks network show ```
+        ``` autoconnect yes ``` 
+    Answer. Yes.
+    So why do i have to reconect after every time i open my screen?
+    3. What does the iwd log say?
+    ``` journalctl -u iwd -b --no-pager ```
+    Answer. It says it is autoconnecting already with some failed attempts.
 
 
-## Result
+
 
 
 ## What I Learned
