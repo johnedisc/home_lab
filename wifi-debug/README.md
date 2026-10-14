@@ -103,7 +103,7 @@ IWD is up and handling wifi connectivity. DHCPCD and NETWORKD however can both h
 
 
 
-
-
 ## What I Learned
 
+After reboot, iwd connects automatically. I had formed the habit of autoconnecting from months ago, but I must have already resolved the problem!
+Solved!
