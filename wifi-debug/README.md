@@ -28,6 +28,9 @@ ip addr show wlan0
 ```
 #### Output
 
+Network names and device addresses have been replaced with example values;
+    commands, service states and diagnostic conclusions are unchanged.
+
 ```bash
 dhcpcd.service           loaded active running DHCP/ IPv4LL/ IPv6RA/ DHCPv6 client on all interfaces
 iwd.service              loaded active running Wireless service
@@ -37,14 +40,14 @@ systemd-resolved.service loaded active running Network Name Resolution
 
 ```bash
 4: wlan0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP group default qlen 1000
-    link/ether e4:a7:a0:d1:4c:9b brd ff:ff:ff:ff:ff:ff
-    inet 10.0.0.29/24 brd 10.0.0.255 scope global dynamic noprefixroute wlan0
+    link/ether 02:00:00:00:00:01 brd ff:ff:ff:ff:ff:ff
+    inet 192.168.50.10/24 brd 192.168.50.255 scope global dynamic noprefixroute wlan0
        valid_lft 170427sec preferred_lft 148827sec
-    inet6 2601:1c2:301:cd4e::651d/128 scope global dynamic noprefixroute 
+    inet6 2001:db8::10/128 scope global dynamic noprefixroute 
        valid_lft 46930sec preferred_lft 46930sec
-    inet6 2601:1c2:301:cd4e:172f:40e:3129:7fb4/64 scope global dynamic mngtmpaddr noprefixroute 
+    inet6 2001:db8:1::20/64 scope global dynamic mngtmpaddr noprefixroute 
        valid_lft 49307sec preferred_lft 49307sec
-    inet6 fe80::718f:e89c:418d:4c7c/64 scope link 
+    inet6 fe80::1/64 scope link 
        valid_lft forever preferred_lft forever
 ```
 
@@ -71,7 +74,7 @@ IWD is up and handling wifi connectivity. DHCPCD and NETWORKD however can both h
         Oct 13 23:11:32 machine dhcpcd[384]: wlan0: carrier acquired
         Oct 13 23:11:32 machine dhcpcd[384]: wlan0: IAID ...
         Oct 13 23:11:32 machine dhcpcd[384]: wlan0: adding address 
-        Oct 13 23:11:34 machine dhcpcd[384]: wlan0: rebinding lease of 10.0.0.29
+        Oct 13 23:11:34 machine dhcpcd[384]: wlan0: rebinding lease of 192.168.50.10
         Oct 13 23:11:34 machine dhcpcd[384]: wlan0: soliciting an IPv6 router
         Oct 13 23:11:34 machine dhcpcd[384]: wlan0: Router Advertisement from id
         Oct 13 23:11:34 machine dhcpcd[384]: wlan0: adding address id
@@ -88,8 +91,8 @@ IWD is up and handling wifi connectivity. DHCPCD and NETWORKD however can both h
     1. does it remember connecting to wifi networks in the past?
         ```
         Known Networks
-          BedsideManor                      open                    Jan  1,  4:45 PM     
-          Starbucks WiFi                    open                    Aug  5, 10:13 PM     
+          <HOME_WIFI>                      secured                 Jan  1,  4:45 PM     
+          <OTHER_WIFI>                     open                    Aug  5, 10:13 PM     
         ```
     Answer. Yes.
     2. is autoconnect on?
@@ -105,5 +108,9 @@ IWD is up and handling wifi connectivity. DHCPCD and NETWORKD however can both h
 
 ## What I Learned
 
-After reboot, iwd connects automatically. I had formed the habit of autoconnecting from months ago, but I must have already resolved the problem!
-Solved!
+After reboot, iwd connected automatically without an iwctl command.
+    The logs showed that dhcpcd handled the lease and route, while networkd
+    was not managing wlan0. I ruled out my suspected conflict between those
+    services. No new configuration change was needed during this investigation.
+    This reboot check verified automatic connection at startup; reconnecting
+    after suspend or closing the lid still needs a separate test.
